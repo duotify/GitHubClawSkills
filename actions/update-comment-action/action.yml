@@ -11,7 +11,12 @@ inputs:
     default: ''
   message:
     description: 留言的純文字內容（允許換行）。
-    required: true
+    required: false
+    default: ''
+  message_file:
+    description: 留言內容的檔案路徑；當 message 未提供時使用（允許換行）。
+    required: false
+    default: ''
   brain_meta:
     description: 附加於進度留言的 brain metadata 字串
     required: false
@@ -27,17 +32,33 @@ runs:
         ISSUE_NUMBER: ${{ inputs.issue_number }}
         COMMENT_ID: ${{ inputs.comment_id }}
         MESSAGE: ${{ inputs.message }}
+        MESSAGE_FILE: ${{ inputs.message_file }}
         GH_TOKEN: ${{ github.token }}
         REPOSITORY: ${{ github.repository }}
         BRAIN_META: ${{ inputs.brain_meta }}
       run: |
         set -euo pipefail
 
+        # 留言內容共有三種來源：
+        # 1. 有 message：直接使用 message
+        # 2. 無 message，但有 message_file：讀取檔案內容
+        # 3. 兩者皆無：改用執行失敗 fallback 訊息
+        if [[ -n "${MESSAGE}" ]]; then
+          message="${MESSAGE}"
+        elif [[ -n "${MESSAGE_FILE}" ]]; then
+          message="$(cat "${MESSAGE_FILE}")"
+        else
+          message="$(printf '❌ 執行失敗。請查看 Workflow 執行記錄。')"
+        fi
+
+        # 所有路徑都必須附帶 BRAIN_META，避免下游流程無法辨識來源。
+        message="${message}"$'\n\n'"${BRAIN_META}"
+
         message_file="${RUNNER_TEMP}/update-issue-comment-body-$$.json"
 
-        # 透過 Node.js 從環境變數讀取 message 並序列化為 JSON，
+        # 透過 Node.js 從環境變數讀取 body 並序列化為 JSON，
         # 以安全處理換行、Unicode 及 shell 特殊字元。
-        node -e "process.stdout.write(JSON.stringify({body: process.env.MESSAGE, brain_meta: process.env.BRAIN_META}))" \
+        message="${message}" node -e "process.stdout.write(JSON.stringify({body: process.env.message}))" \
           > "${message_file}"
 
         # 發送 API 請求，最多重試 5 次。
