@@ -12,19 +12,13 @@
 
 ## 📦 安裝方式
 
-### 安裝到目前值班的小龍蝦
-
 在 Telegram 對話中輸入：
 
 ```
-/skills add nanobanana-2-image-generation
+/skills
 ```
 
-### 安裝為全域技能（所有小龍蝦共用）
-
-```
-/skills add nanobanana-2-image-generation -g
-```
+輸入後會顯示可安裝的技能列表，選擇此技能即可完成安裝。
 
 ## ⚙️ 需要的設定
 
