@@ -91,6 +91,29 @@ function formatNumber(num) {
   return String(num);
 }
 
+// Tweet ID must be a non-empty numeric string; username must be 1–15 word chars
+const TWEET_ID_RE = /^\d+$/;
+const USERNAME_RE = /^\w{1,15}$/;
+
+function buildTweetUrl(id, username) {
+  const validId = typeof id === 'string' && TWEET_ID_RE.test(id.trim());
+  const validUsername = typeof username === 'string' && USERNAME_RE.test(username.trim());
+
+  if (!validId) return null;
+
+  const base = validUsername
+    ? `https://x.com/${username.trim()}/status/${id.trim()}`
+    : `https://x.com/i/web/status/${id.trim()}`;
+
+  // Structural check via URL constructor — catches any remaining edge cases
+  try {
+    new URL(base);
+    return base;
+  } catch {
+    return null;
+  }
+}
+
 function formatUser(u, headerLevel = 2) {
   if (!u) return '';
   const h = '#'.repeat(Math.min(6, headerLevel));
@@ -129,7 +152,9 @@ function formatTweet(t, indent = '', headerLevel = 3) {
   const verified = author.verified ? ' ✓' : '';
 
   let out = `${indent}${h} @${author.username || 'unknown'}(${author.display_name || author.username || 'unknown'}${verified})\n`;
-  const meta = [`Posted: ${t.created_at || 'unknown'}`, `Tweet ID: \`${t.id}\``];
+  const tweetUrl = buildTweetUrl(t.id, author.username);
+  const tweetLink = tweetUrl ? `[🐦 查看推文](${tweetUrl})` : `Tweet ID: \`${t.id}\``;
+  const meta = [`Posted: ${t.created_at || 'unknown'}`, tweetLink];
   if (t.conversation_id) meta.push(`Conversation: \`${t.conversation_id}\``);
   if (t.is_reply && t.in_reply_to_username) meta.push(`Reply to @${t.in_reply_to_username}`);
   out += `${indent}- ${meta.join(' ｜ ')}\n\n`;
